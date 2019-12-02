@@ -3,7 +3,6 @@ defmodule AOC.FuelCalculator do
   def calculate_fuel_requirements() do
     get_module_masses()
     |> Enum.reduce(0, &add_fuel_requirement/2)
-    # |> add_fuel_for_fuel()
   end
 
   def get_module_masses() do
@@ -14,15 +13,12 @@ defmodule AOC.FuelCalculator do
   end
 
   def add_fuel_requirement(mass, fuel_sum) do
-    add_fuel_for_fuel(calculate_fuel_requirements_for_mass(mass)) + fuel_sum
+    calculate_fuel_requirements_for_mass(mass) + fuel_sum
   end
 
-  def calculate_fuel_requirements_for_mass(mass) when mass <= 2, do: 0
-  def calculate_fuel_requirements_for_mass(mass), do: Float.floor(mass/3) - 2
-
-  def add_fuel_for_fuel(mass) when mass <= 2, do: 0
-  def add_fuel_for_fuel(mass) do
-    IO.inspect(mass)
-    mass + add_fuel_for_fuel(calculate_fuel_requirements_for_mass(mass))
+  def calculate_fuel_requirements_for_mass(mass) when mass < 9, do: 0
+  def calculate_fuel_requirements_for_mass(mass) do
+    req_fuel = Float.floor(mass/3) - 2
+    req_fuel + calculate_fuel_requirements_for_mass(req_fuel)
   end
 end
