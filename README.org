@@ -1,0 +1,17 @@
+* AdventOfCode
+
+Here I want to try some (or all?) of the [[https://adventofcode.com][Advent of Code riddles]].
+
+** Installation
+
+If [[https://hex.pm/docs/publish][available in Hex]], the package can be installed
+by adding `aoc` to your list of dependencies in `mix.exs`:
+#+BEGIN_SRC elixir :session iEx
+  def deps do
+    [
+      {:aoc, "~> 0.1.0"}
+    ]
+  end
+#+END_SRC
+
+Documentation can be generated with [[https://github.com/elixir-lang/ex_doc][ExDoc]] and published on [[https://hexdocs.pm][HexDocs]].
