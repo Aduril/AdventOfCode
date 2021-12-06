@@ -1,5 +1,147 @@
 defmodule AOC.Submarine do
 
+  def estimate_lantern_fishes() do
+    "data/2021-day6.txt"
+    |> file_to_line_list()
+    |> List.first()
+    |> String.split(",")
+    |> Enum.map(&String.to_integer/1)
+    |> Enum.frequencies()
+    |> run_lantern_fish_simulation(256)
+    |> count_fishes()
+  end
+
+  defp count_fishes(fish_map) do
+    fish_map
+    |> Map.values()
+    |> Enum.sum()
+  end
+  defp run_lantern_fish_simulation(fishes, 0), do: fishes
+  defp run_lantern_fish_simulation(fishes, days), do: run_a_simulation_day(fishes, days)
+
+  defp run_a_simulation_day(fishes, days) do
+    fishes
+    |> update_population()
+    |> run_lantern_fish_simulation(days - 1)
+  end
+
+  defp update_population(fishes) do
+    fishes
+    |> Enum.map(fn {day, no} -> {calc_day(day), no} end)
+    |> (&([{8, Map.get(fishes, 0, 0)} | &1])).()
+    |> create_new_fish_map(%{})
+  end
+
+  defp create_new_fish_map([], map), do: map
+  defp create_new_fish_map([f | fs], map), do: create_new_fish_map(fs, update_fish_map(map, f))
+
+  defp update_fish_map(map, {day, no}), do: Map.update(map, day, no, fn v -> v + no end)
+
+  defp calc_day(0), do: 6
+  defp calc_day(day), do: day - 1 
+
+  def navigate_all_pipes() do
+    "data/2021-day5.txt"
+    |> file_to_line_list()
+    |> get_directions()
+    |> generate_piped_fields()
+    |> print_fields()
+    |> calculate_number_of_steamy_fields()
+  end
+
+  def navigate_straight_pipes() do
+    "data/2021-day5.txt"
+    |> file_to_line_list()
+    |> get_directions()
+    |> remove_none_straight_directions()
+    |> generate_piped_fields()
+    |> print_fields()
+    |> calculate_number_of_steamy_fields()
+  end
+
+  defp calculate_number_of_steamy_fields(fields) do
+    fields
+    |> Enum.frequencies()
+    |> Enum.filter(fn {{_x, _y}, v} -> v > 1 end)
+    |> length()
+  end
+
+  defp print_fields(piped_fields) do
+    max_x = piped_fields |> Enum.max_by(fn {x, _y} -> x end) |> elem(0)
+    max_y = piped_fields |> Enum.max_by(fn {_x, y} -> y end) |> elem(1)
+    all_fields =
+      for x <- 0..max_x, y <- 0..max_y do
+        {x, y, Enum.count(piped_fields, fn {fx, fy} -> fx == x and fy == y end)}
+      end
+    file = File.stream!("pipe_map.txt")
+    all_fields
+    |> sort_fields()
+    |> Stream.into(file)
+    |> Stream.run
+
+    piped_fields
+  end
+
+  defp sort_fields(fields) do
+    fields
+    |> Enum.group_by(fn {_x, y, _v} -> y end)
+    |> Enum.map(fn {y, field} -> {y, sort_fields_by_x(field)} end)
+    |> Enum.sort_by(fn {y, _} -> y end)
+    |> Enum.map(fn {_, v} -> Enum.join(v) end)
+  end
+
+  defp sort_fields_by_x(field) do
+    field
+    |> Enum.group_by(fn {x, _, _} -> x end)
+    |> Enum.map(fn {x, field} -> {x, field} end)
+    |> Enum.sort_by(fn {y, _} -> y end)
+    |> Enum.map(fn {_, [{_, _, v}]} -> v end)
+  end
+
+  defp generate_piped_fields([]), do: []
+  defp generate_piped_fields([direction | directions]) do
+    {x1, y1} = direction.from
+    {x2, y2} = direction.to
+    get_used_coordinates(x1, y1, x2, y2) ++ generate_piped_fields(directions)
+  end
+
+  defp get_used_coordinates(x1, y1, x2, y2) do
+    x_add = x1 |> Kernel.-(x2) |> get_move()
+    y_add = y1 |> Kernel.-(y2) |> get_move()
+    if x_add == 0 and y_add == 0 do
+      [{x1, y1}]
+    else
+      [{x1, y1} | get_used_coordinates(x1 + x_add, y1 + y_add, x2, y2)]
+    end
+  end
+
+  defp get_move(0), do: 0
+  defp get_move(diff) when diff > 0, do: -1
+  defp get_move(diff) when diff < 0, do: 1
+
+  defp remove_none_straight_directions([]), do: []
+  defp remove_none_straight_directions([direction | directions]) do
+    {x1, y1} = direction.from
+    {x2, y2} = direction.to
+    if x1 == x2 or y1 == y2 do
+      [direction | remove_none_straight_directions(directions)]
+    else
+      remove_none_straight_directions(directions)
+    end
+  end
+
+  defp get_directions([]), do: []
+  defp get_directions([entry | list]), do: [get_direction(entry) | get_directions(list)]
+
+  defp get_direction(entry) do
+    entry
+    |> String.split(~r{((->)|,|\s)})
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(&String.to_integer/1)
+    |> map_to_direction()
+  end
+
+  defp map_to_direction([x1, y1, x2, y2]), do: %{from: {x1, y1}, to: {x2, y2}}
 
   def play_bingo_board_to_lose() do
     "data/2021-day4.txt"
@@ -18,15 +160,15 @@ defmodule AOC.Submarine do
   defp find_worst_board([moves | boards]) do
     moves = String.split(moves, ",")
     boards = boards |> build_boards()
-    find_worst_board(boards, moves)
+    run_board_until_last_wins(boards, moves)
   end
 
-  defp find_worst_board(boards, moves) do
+  defp run_board_until_last_wins(boards, moves) do
     {winners, move, boards, moves} = play_game(boards, moves)
     cond do
       length(moves) == 0 -> {winners, move, boards, moves}
       Enum.all?(boards, fn f -> f.board in winners end) -> {winners, move, boards, moves}
-      true -> boards |> Enum.reject(&(&1.board in winners)) |> find_worst_board(moves)
+      true -> boards |> Enum.reject(&(&1.board in winners)) |> run_board_until_last_wins(moves)
     end
   end
 
@@ -48,7 +190,7 @@ defmodule AOC.Submarine do
     |> check_for_winner(move)
   end
 
-  defp calculate_result({[winner | _], move, fields, moves}) do
+  defp calculate_result({[winner | _], move, fields, _moves}) do
     fields
     |> Enum.filter(fn f -> f.board == winner end)
     |> Enum.filter(fn f -> f.marked == false end)
