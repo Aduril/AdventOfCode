@@ -1,4 +1,98 @@
 defmodule AOC.Submarine do
+  def decrypt_display_add_up_outputs() do
+    "data/2021-day8.txt"
+    |> file_to_line_list()
+    |> get_inputs_and_outputs()
+    |> decrypt_outputs()
+    |> add_up_outputs()
+  end
+
+  defp add_up_outputs(outputs) do
+    outputs
+    |> Enum.map(&map_output_to_number(&1, 0))
+    |> Enum.sum()
+  end
+
+  defp map_output_to_number([], counter), do: counter
+  defp map_output_to_number([o | l], counter), do: map_output_to_number(l, 10 * counter + o)
+
+  def decrypt_display_for_easy_numbers() do
+    "data/2021-day8.txt"
+    |> file_to_line_list()
+    |> get_inputs_and_outputs()
+    |> decrypt_outputs()
+    |> List.flatten()
+    |> Enum.filter(fn no -> no in [1, 4, 7, 8] end)
+    |> length()
+  end
+
+  defp decrypt_outputs(input_output_pairs), do: Enum.map(input_output_pairs, &decrypt_output/1)
+
+  defp decrypt_output([input, output]) do
+    numbers = input |> find_numbers()
+    Enum.map(output, &map_output(&1, numbers))
+  end
+
+  defp map_output(output, numbers) do
+    {_, number} = Enum.find(numbers, fn {input, _} -> input == output end)
+    number
+  end
+
+  defp find_numbers(input) do
+    one = Enum.find(input, fn i -> length(i) == 2 end)
+    two = find_two(input)
+    three = find_three(input, one)
+    four = Enum.find(input, fn i -> length(i) == 4 end)
+    five = Enum.find(input, fn i -> length(i) == 5 and i not in [two, three] end)
+    six = find_six(input, one)
+    seven = Enum.find(input, fn i -> length(i) == 3 end)
+    eight = Enum.find(input, fn i -> length(i) == 7 end)
+    zero = find_zero(input, five)
+    nine = Enum.find(input, fn i -> length(i) == 6 and i not in [zero, six] end)
+    Enum.with_index([zero, one, two, three, four, five, six, seven, eight, nine])
+  end
+
+  defp find_zero(input, five) do
+    input
+    |> Enum.filter(fn i -> length(i) == 6 end)
+    |> Enum.find(fn i -> length(i -- five) == 2 and length(five -- i) == 1 end)
+  end
+
+  defp find_two(input) do
+    {right_down, 9} =
+      input
+      |> List.flatten()
+      |> Enum.frequencies()
+      |> Enum.find(fn {_k, v} -> v == 9 end)
+
+    input |> Enum.find(fn i -> not Enum.member?(i, right_down) end)
+  end
+
+  defp find_three(input, one) do
+    Enum.find(input, fn i -> length(i) == 5 and length(i -- one) == 3 end)
+  end
+
+  defp find_six(input, one) do
+    input
+    |> Enum.filter(fn i -> length(i) == 6 end)
+    |> Enum.find(fn i -> length(i -- one) == 5 and length(one -- i) == 1 end)
+  end
+
+  defp get_inputs_and_outputs(lines), do: Enum.map(lines, &get_input_and_output/1)
+
+  defp get_input_and_output(line) do
+    line
+    |> String.split("|")
+    |> Enum.map(&sanitize_crypted_numbers/1)
+  end
+
+  defp sanitize_crypted_numbers(numbers) do
+    numbers
+    |> String.split(" ")
+    |> Enum.reject(fn str -> str == "" end)
+    |> Enum.map(fn str -> str |> String.codepoints() |> Enum.sort() end)
+  end
+
   def line_up_crabs() do
     "data/2021-day7-test.txt"
     |> file_to_line_list()
