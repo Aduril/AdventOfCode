@@ -1,4 +1,34 @@
 defmodule AOC.Submarine do
+  def line_up_crabs() do
+    "data/2021-day7-test.txt"
+    |> file_to_line_list()
+    |> List.first()
+    |> String.split(",")
+    |> Enum.map(&String.to_integer/1)
+    |> find_minimal_distance()
+  end
+
+  defp find_minimal_distance(points) do
+    min = Enum.min(points)
+    max = Enum.max(points)
+    range = min..max
+
+    range
+    |> Enum.map(&get_fuel_consume(&1, points, 0))
+    |> IO.inspect(label: "THIS_IS_FOR_DEBUG_REASONS: consumes")
+    |> Enum.min_by(fn {_target, consume} -> consume end)
+  end
+
+  defp get_fuel_consume(target, [], consume), do: {target, consume}
+  # defp get_fuel_consume(t, [p | points], c), do: get_fuel_consume(t, points, c + abs(t - p))
+  defp get_fuel_consume(t, [p | ps], c), do: get_fuel_consume(t, ps, calc_fuel_consume(t, p, c))
+
+  defp calc_fuel_consume(target, point, consume) do
+    1
+    |> Range.new(abs(target - point))
+    |> Enum.sum()
+    |> Kernel.+(consume)
+  end
 
   def estimate_lantern_fishes() do
     "data/2021-day6.txt"
@@ -16,6 +46,7 @@ defmodule AOC.Submarine do
     |> Map.values()
     |> Enum.sum()
   end
+
   defp run_lantern_fish_simulation(fishes, 0), do: fishes
   defp run_lantern_fish_simulation(fishes, days), do: run_a_simulation_day(fishes, days)
 
@@ -28,7 +59,7 @@ defmodule AOC.Submarine do
   defp update_population(fishes) do
     fishes
     |> Enum.map(fn {day, no} -> {calc_day(day), no} end)
-    |> (&([{8, Map.get(fishes, 0, 0)} | &1])).()
+    |> (&[{8, Map.get(fishes, 0, 0)} | &1]).()
     |> create_new_fish_map(%{})
   end
 
@@ -38,7 +69,7 @@ defmodule AOC.Submarine do
   defp update_fish_map(map, {day, no}), do: Map.update(map, day, no, fn v -> v + no end)
 
   defp calc_day(0), do: 6
-  defp calc_day(day), do: day - 1 
+  defp calc_day(day), do: day - 1
 
   def navigate_all_pipes() do
     "data/2021-day5.txt"
@@ -69,15 +100,18 @@ defmodule AOC.Submarine do
   defp print_fields(piped_fields) do
     max_x = piped_fields |> Enum.max_by(fn {x, _y} -> x end) |> elem(0)
     max_y = piped_fields |> Enum.max_by(fn {_x, y} -> y end) |> elem(1)
+
     all_fields =
       for x <- 0..max_x, y <- 0..max_y do
         {x, y, Enum.count(piped_fields, fn {fx, fy} -> fx == x and fy == y end)}
       end
+
     file = File.stream!("pipe_map.txt")
+
     all_fields
     |> sort_fields()
     |> Stream.into(file)
-    |> Stream.run
+    |> Stream.run()
 
     piped_fields
   end
@@ -99,6 +133,7 @@ defmodule AOC.Submarine do
   end
 
   defp generate_piped_fields([]), do: []
+
   defp generate_piped_fields([direction | directions]) do
     {x1, y1} = direction.from
     {x2, y2} = direction.to
@@ -108,6 +143,7 @@ defmodule AOC.Submarine do
   defp get_used_coordinates(x1, y1, x2, y2) do
     x_add = x1 |> Kernel.-(x2) |> get_move()
     y_add = y1 |> Kernel.-(y2) |> get_move()
+
     if x_add == 0 and y_add == 0 do
       [{x1, y1}]
     else
@@ -120,9 +156,11 @@ defmodule AOC.Submarine do
   defp get_move(diff) when diff < 0, do: 1
 
   defp remove_none_straight_directions([]), do: []
+
   defp remove_none_straight_directions([direction | directions]) do
     {x1, y1} = direction.from
     {x2, y2} = direction.to
+
     if x1 == x2 or y1 == y2 do
       [direction | remove_none_straight_directions(directions)]
     else
@@ -165,6 +203,7 @@ defmodule AOC.Submarine do
 
   defp run_board_until_last_wins(boards, moves) do
     {winners, move, boards, moves} = play_game(boards, moves)
+
     cond do
       length(moves) == 0 -> {winners, move, boards, moves}
       Enum.all?(boards, fn f -> f.board in winners end) -> {winners, move, boards, moves}
@@ -174,6 +213,7 @@ defmodule AOC.Submarine do
 
   defp find_best_board([moves | boards]) do
     moves = String.split(moves, ",")
+
     boards
     |> build_boards()
     |> play_game(moves)
@@ -181,12 +221,12 @@ defmodule AOC.Submarine do
 
   defp play_game({[], move, boards}, []), do: {nil, move, boards, []}
   defp play_game({[], _, boards}, moves), do: play_game(boards, moves)
-  defp play_game({winners, move,  boards}, moves), do: {winners, move, boards, moves}
+  defp play_game({winners, move, boards}, moves), do: {winners, move, boards, moves}
   defp play_game(boards, [move | moves]), do: play_game(play_move(boards, move), moves)
 
   defp play_move(boards, move) do
     boards
-    |> Enum.map(&(mark_fields(&1, move)))
+    |> Enum.map(&mark_fields(&1, move))
     |> check_for_winner(move)
   end
 
@@ -222,7 +262,7 @@ defmodule AOC.Submarine do
   end
 
   defp get_winner_board(list) when length(list) < 5, do: nil
-  defp get_winner_board([f| _] = list) when length(list) == 5, do: f.board
+  defp get_winner_board([f | _] = list) when length(list) == 5, do: f.board
 
   defp mark_fields(field, move) do
     Map.update(field, :marked, false, fn v -> v || field.value == move end)
@@ -242,11 +282,10 @@ defmodule AOC.Submarine do
   defp build_lines([], _, _), do: []
   defp build_lines([l | ls], b, y), do: [build_line(l, b, y, 0) | build_lines(ls, b, y + 1)]
 
-  defp build_line([], _, _ ,_), do: []
-  defp build_line([f | fs], b, y, x), do: [build_field(f, b, y, x)| build_line(fs, b, y, x + 1)]
+  defp build_line([], _, _, _), do: []
+  defp build_line([f | fs], b, y, x), do: [build_field(f, b, y, x) | build_line(fs, b, y, x + 1)]
 
-  defp build_field(val, board, y, x), do: %{ value: val, y: y, x: x, board: board, marked: false}
-
+  defp build_field(val, board, y, x), do: %{value: val, y: y, x: x, board: board, marked: false}
 
   def check_life_support() do
     "data/2021-day3.txt"
@@ -261,8 +300,9 @@ defmodule AOC.Submarine do
   end
 
   defp find_binary_oxygen_value([value], _), do: value
+
   defp find_binary_oxygen_value(list, pos) do
-    { zeros, ones } = count_zeros_and_ones_at_pos(list, pos)
+    {zeros, ones} = count_zeros_and_ones_at_pos(list, pos)
     to_filter = if zeros > ones, do: "0", else: "1"
 
     list
@@ -270,10 +310,10 @@ defmodule AOC.Submarine do
     |> find_binary_oxygen_value(pos + 1)
   end
 
-
   defp find_binary_co2_value([value], _), do: value
+
   defp find_binary_co2_value(list, pos) do
-    { zeros, ones } = count_zeros_and_ones_at_pos(list, pos)
+    {zeros, ones} = count_zeros_and_ones_at_pos(list, pos)
     to_filter = if zeros > ones, do: "1", else: "0"
 
     list
@@ -286,8 +326,6 @@ defmodule AOC.Submarine do
     ones = Enum.count(list, fn str -> String.at(str, pos) == "1" end)
     {zeros, ones}
   end
-
-
 
   def check_power_consumption() do
     "data/2021-day3.txt"
@@ -316,7 +354,7 @@ defmodule AOC.Submarine do
     counter_map
     |> Enum.map(fn {key, val} -> {String.to_integer(key), map_gamma_value(val)} end)
     |> Enum.sort_by(fn {key, _} -> key end)
-    |> Enum.map(&(elem(&1, 1)))
+    |> Enum.map(&elem(&1, 1))
     |> Enum.join()
     |> parse_binary()
   end
@@ -325,7 +363,7 @@ defmodule AOC.Submarine do
     counter_map
     |> Enum.map(fn {key, val} -> {String.to_integer(key), map_epsilon_value(val)} end)
     |> Enum.sort_by(fn {key, _} -> key end)
-    |> Enum.map(&(elem(&1, 1)))
+    |> Enum.map(&elem(&1, 1))
     |> Enum.join()
     |> parse_binary()
   end
@@ -334,17 +372,16 @@ defmodule AOC.Submarine do
 
   defp map_gamma_value(val) when val < 0, do: "0"
   defp map_gamma_value(val) when val > 0, do: "1"
-  defp map_gamma_value(_val), do: raise "Strange value!"
-
+  defp map_gamma_value(_val), do: raise("Strange value!")
 
   defp map_epsilon_value(val) when val > 0, do: "0"
   defp map_epsilon_value(val) when val < 0, do: "1"
-  defp map_epsilon_value(_val), do: raise "Strange value!"
+  defp map_epsilon_value(_val), do: raise("Strange value!")
 
   def get_position() do
     "data/2021-day2.txt"
     |> file_to_line_list()
-    |> follow_path({0,0})
+    |> follow_path({0, 0})
     |> (&(elem(&1, 0) * elem(&1, 1))).()
   end
 
@@ -366,12 +403,13 @@ defmodule AOC.Submarine do
   defp follow_aim_path([val | rest], pos), do: follow_aim_path(rest, update_aim_pos(val, pos))
 
   defp update_aim_pos(<<"forward ", m::binary>>, {v, h, a}) do
-    {v + (String.to_integer(m) * a), h + String.to_integer(m), a}
+    {v + String.to_integer(m) * a, h + String.to_integer(m), a}
   end
 
   defp update_aim_pos(<<"down ", m::binary>>, {v, h, a}) do
     {v, h, a + String.to_integer(m)}
   end
+
   defp update_aim_pos(<<"up ", m::binary>>, {v, h, a}) do
     {v, h, a - String.to_integer(m)}
   end
@@ -383,7 +421,6 @@ defmodule AOC.Submarine do
     |> count_inc(0)
   end
 
-
   def count_depth_increases_with_sliding_window() do
     "data/2021-day1.txt"
     |> file_to_line_list()
@@ -393,15 +430,16 @@ defmodule AOC.Submarine do
   end
 
   defp get_sliding_windows([_ | [_ | []]]), do: []
-  defp get_sliding_windows([a | [b | [c | _]] = rest]), do: [a+b+c|get_sliding_windows(rest)]
+
+  defp get_sliding_windows([a | [b | [c | _]] = rest]),
+    do: [a + b + c | get_sliding_windows(rest)]
 
   defp count_inc([_ | []], counter), do: counter
   defp count_inc([v1 | [v2 | _] = rest], counter), do: count_inc(rest, inc(counter, v1, v2))
 
-  defp inc(counter, v1, v2), do: if v2 > v1, do: counter + 1, else: counter
+  defp inc(counter, v1, v2), do: if(v2 > v1, do: counter + 1, else: counter)
 
   # generic helpers
-
 
   defp file_to_line_list(path) do
     path
