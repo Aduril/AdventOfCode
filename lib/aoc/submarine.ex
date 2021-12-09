@@ -1,4 +1,101 @@
 defmodule AOC.Submarine do
+  def find_basins() do
+    "data/2021-day9.txt"
+    |> file_to_line_list()
+    |> Enum.map(fn line -> line |> String.codepoints() |> Enum.map(&String.to_integer/1) end)
+    |> calculate_basins()
+  end
+
+  defp calculate_basins(heights) do
+    heights
+    |> find_low_points()
+    |> Enum.map(&find_low_points_basin(&1, heights))
+    |> Enum.map(&length/1)
+    |> Enum.sort(:desc)
+    |> Enum.take(3)
+    |> multiply_list()
+  end
+
+  defp multiply_list(list, value \\ 1)
+  defp multiply_list([], value), do: value
+  defp multiply_list([e | l], value), do: multiply_list(l, e * value)
+
+  defp find_low_points_basin(low_point, heights) do
+    low_point
+    |> (fn {value, _neighbors, y, x} -> {y, x, value} end).()
+    |> find_basin(heights)
+    |> Enum.reject(fn {value, _y, _x} -> value == 9 end)
+    |> Enum.uniq()
+  end
+
+  defp find_basin({y, x, value}, heights) do
+    {y, x}
+    |> find_upward_neighbors(value, heights)
+    |> List.wrap()
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&find_basin(&1, heights))
+    |> List.flatten()
+    |> (&[{value, y, x} | &1]).()
+  end
+
+  defp find_upward_neighbors({y, _x}, _value, _heights) when y < 0, do: nil
+  defp find_upward_neighbors({_y, x}, _value, _heights) when x < 0, do: nil
+  defp find_upward_neighbors({_y, _x}, nil, _heights), do: nil
+  defp find_upward_neighbors({_y, _x}, 9, _heights), do: nil
+
+  defp find_upward_neighbors({y, x}, value, heights) do
+    [{y, x - 1}, {y, x + 1}, {y - 1, x}, {y + 1, x}]
+    |> Enum.map(&{&1, get_field_value(heights, &1)})
+    |> Enum.reject(fn {_yx, v} -> is_nil(v) or v <= value end)
+    |> Enum.map(fn {{y, x}, v} -> {y, x, v} end)
+  end
+
+  def determine_risk_level() do
+    "data/2021-day9.txt"
+    |> file_to_line_list()
+    |> Enum.map(fn line -> line |> String.codepoints() |> Enum.map(&String.to_integer/1) end)
+    |> calculate_risk_level()
+  end
+
+  defp calculate_risk_level(heights) do
+    heights
+    |> find_low_points()
+    |> Enum.map(&elem(&1, 0))
+    |> sum_low_points_up()
+  end
+
+  defp sum_low_points_up(list, sum \\ 0)
+  defp sum_low_points_up([], sum), do: sum
+  defp sum_low_points_up([point | points], sum), do: sum_low_points_up(points, sum + point + 1)
+
+  defp find_low_points(heights) do
+    heights
+    |> get_point_with_direct_neighbor_tuples()
+    |> Enum.filter(&is_low_point?/1)
+  end
+
+  defp is_low_point?({value, neighbors, _y, _x}), do: neighbors |> Enum.all?(&(&1 > value))
+
+  defp get_point_with_direct_neighbor_tuples(heights) do
+    y_max = length(heights) - 1
+    x_max = length(List.first(heights)) - 1
+
+    for y <- 0..y_max, x <- 0..x_max do
+      {get_field_value(heights, y, x), get_neighbors(heights, y, x), y, x}
+    end
+  end
+
+  def get_neighbors(heights, y, x) do
+    [{y, x - 1}, {y, x + 1}, {y - 1, x}, {y + 1, x}]
+    |> Enum.map(fn {yn, xn} -> get_field_value(heights, yn, xn) end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp get_field_value(h, {y, x}), do: get_field_value(h, y, x)
+  defp get_field_value(_h, y, _x) when y < 0, do: nil
+  defp get_field_value(_h, _y, x) when x < 0, do: nil
+  defp get_field_value(h, y, x), do: h |> Enum.at(y, []) |> Enum.at(x, nil)
+
   def decrypt_display_add_up_outputs() do
     "data/2021-day8.txt"
     |> file_to_line_list()

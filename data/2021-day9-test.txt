@@ -1,0 +1,9 @@
+reject(enumerable, fun)
+
+Returns a list of elements in enumerable excluding those for which the function fun returns
+a truthy value.
+
+@spec reject(
+  t,
+  (element -> as_boolean(term))
+) :: list
