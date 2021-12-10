@@ -156,13 +156,13 @@ defmodule AOC.Submarine do
   end
 
   defp find_two(input) do
-    {right_down, 9} =
+    {right_down_symbol, 9} =
       input
       |> List.flatten()
       |> Enum.frequencies()
       |> Enum.find(fn {_k, v} -> v == 9 end)
 
-    input |> Enum.find(fn i -> not Enum.member?(i, right_down) end)
+    input |> Enum.find(fn i -> not Enum.member?(i, right_down_symbol) end)
   end
 
   defp find_three(input, one) do
