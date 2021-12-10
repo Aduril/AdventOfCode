@@ -1,4 +1,60 @@
 defmodule AOC.Submarine do
+  def fix_incomplete_input_in_my_navigation() do
+    "data/2021-day10.txt"
+    |> file_to_line_list()
+    |> Enum.map(fn line -> line |> String.codepoints() end)
+    |> fix_incomplete_lines()
+  end
+
+  defp fix_incomplete_lines(lines) do
+    lines
+    |> Enum.map(&find_err_char/1)
+    |> Enum.filter(&is_list/1)
+    |> Enum.map(&calc_ac_score/1)
+    |> Enum.sort()
+    |> (&Enum.at(&1, &1 |> length() |> div(2))).()
+  end
+
+  defp calc_ac_score(chars, score \\ 0)
+  defp calc_ac_score([], score), do: score
+  defp calc_ac_score([c | cs], score), do: calc_ac_score(cs, score * 5 + get_ac_val(c))
+
+  defp get_ac_val("("), do: 1
+  defp get_ac_val("["), do: 2
+  defp get_ac_val("{"), do: 3
+  defp get_ac_val("<"), do: 4
+
+  def uncorruptify_my_navigation() do
+    "data/2021-day10.txt"
+    |> file_to_line_list()
+    |> Enum.map(fn line -> line |> String.codepoints() end)
+    |> find_err_chars()
+    |> calculate_corruption_score()
+  end
+
+  defp calculate_corruption_score([]), do: 0
+  defp calculate_corruption_score([")" | cs]), do: calculate_corruption_score(cs) + 3
+  defp calculate_corruption_score(["]" | cs]), do: calculate_corruption_score(cs) + 57
+  defp calculate_corruption_score(["}" | cs]), do: calculate_corruption_score(cs) + 1197
+  defp calculate_corruption_score([">" | cs]), do: calculate_corruption_score(cs) + 25137
+
+  defp find_err_chars(lines) do
+    lines
+    |> Enum.map(&find_err_char/1)
+    |> Enum.reject(&is_list/1)
+  end
+
+  @open_chars ["(", "{", "<", "["]
+
+  defp find_err_char(chars, open_groups \\ [])
+  defp find_err_char([], open_groups), do: open_groups
+  defp find_err_char([c | cs], og) when c in @open_chars, do: find_err_char(cs, [c | og])
+  defp find_err_char([">" | cs], ["<" | og]), do: find_err_char(cs, og)
+  defp find_err_char([")" | cs], ["(" | og]), do: find_err_char(cs, og)
+  defp find_err_char(["}" | cs], ["{" | og]), do: find_err_char(cs, og)
+  defp find_err_char(["]" | cs], ["[" | og]), do: find_err_char(cs, og)
+  defp find_err_char([corrupt_char | _], _), do: corrupt_char
+
   def find_basins() do
     "data/2021-day9.txt"
     |> file_to_line_list()
