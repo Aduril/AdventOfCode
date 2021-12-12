@@ -1,0 +1,6 @@
+ 1/2 inspect(item, opts \\ [])
+
+Inspects and writes the given item to the device.
+
+@spec inspect(item, keyword) :: item
+when item: var

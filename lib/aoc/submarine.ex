@@ -1,4 +1,202 @@
 defmodule AOC.Submarine do
+  def find_distinct_cave_paths_for_multi_visit() do
+    "data/2021-day12.txt"
+    |> file_to_line_list()
+    |> Enum.map(fn line -> String.split(line, "-") end)
+    |> find_all_paths("task2")
+  end
+
+  def find_distinct_cave_paths_for_single_visit() do
+    "data/2021-day12.txt"
+    |> file_to_line_list()
+    |> Enum.map(fn line -> String.split(line, "-") end)
+    |> find_all_paths("task1")
+  end
+
+  defp find_all_paths(connections, task) do
+    connections
+    |> get_all_caves_from_connections()
+    |> find_cave_paths(task)
+    |> Enum.filter(fn list -> List.first(list) == "end" end)
+    |> Enum.uniq()
+    |> length()
+  end
+
+  defp find_cave_paths(caves, task), do: find_next_path([{caves, ["start"]}], [], task)
+
+  defp find_next_path([], known_paths, _task), do: known_paths
+
+  defp find_next_path([{caves, [current_cave | _] = path} | cave_path_sets], known_paths, task) do
+    caves = add_cave_visit(caves, current_cave)
+
+    caves
+    |> Map.get(current_cave)
+    |> Map.get(:neighbors)
+    |> Enum.filter(fn cave -> allowed_cave?(caves, cave, task) end)
+    |> Enum.map(fn cave -> {caves, [cave | path]} end)
+    |> Kernel.++(cave_path_sets)
+    |> find_next_path([path | known_paths], task)
+  end
+
+  defp allowed_cave?(caves, cave, "task1") do
+    caves[cave].big_cave? or caves[cave].no_of_visits == 0
+  end
+
+  defp allowed_cave?(caves, cave, "task2") do
+    big_cave? = caves[cave].big_cave?
+    unvisited? = caves[cave].no_of_visits == 0
+    second_visit_allowed? = cave not in ["start", "end"] and visited_no_small_cave_twice?(caves)
+    big_cave? or unvisited? or second_visit_allowed?
+  end
+
+  defp visited_no_small_cave_twice?(caves) do
+    Enum.all?(caves, fn {_, cave} -> cave.big_cave? or cave.no_of_visits < 2 end)
+  end
+
+  defp add_cave_visit(caves, name) do
+    Map.update!(caves, name, fn c -> %{c | no_of_visits: c.no_of_visits + 1} end)
+  end
+
+  defp get_all_caves_from_connections(connections) do
+    connections
+    |> List.flatten()
+    |> Enum.uniq()
+    |> Enum.map(&{&1, build_cave(&1, connections)})
+    |> Map.new()
+  end
+
+  defp build_cave(name, connections) do
+    %{
+      big_cave?: Regex.match?(~r/[A-Z]+/, name),
+      name: name,
+      neighbors: get_neighbor_caves(name, connections),
+      no_of_visits: 0
+    }
+  end
+
+  defp get_neighbor_caves(name, connections) do
+    connections
+    |> Enum.filter(fn conn -> name in conn end)
+    |> List.flatten()
+    |> Enum.reject(fn n -> name == n end)
+    |> Enum.uniq()
+  end
+
+  def find_octo_sync() do
+    "data/2021-day11.txt"
+    |> file_to_line_list()
+    |> Enum.map(fn line -> line |> String.codepoints() |> Enum.map(&String.to_integer/1) end)
+    |> find_sync()
+  end
+
+  defp find_sync(octopuses) do
+    octopuses
+    |> octopuses_to_octrix()
+    |> find_sync(0)
+  end
+
+  defp find_sync(octrix, step) do
+    octrix
+    |> Enum.all?(fn {_, v} -> v == 0 end)
+    |> Kernel.if(do: step, else: run_next_sync_step(octrix, step))
+  end
+
+  defp run_next_sync_step(octrix, step) do
+    octrix
+    |> calculate_new_octrix_and_flashes()
+    |> elem(0)
+    |> find_sync(step + 1)
+  end
+
+  def count_octopus_flashes() do
+    "data/2021-day11.txt"
+    |> file_to_line_list()
+    |> Enum.map(fn line -> line |> String.codepoints() |> Enum.map(&String.to_integer/1) end)
+    |> sim_flash_steps(100)
+    |> List.flatten()
+    |> length()
+  end
+
+  defp sim_flash_steps(octopuses, steps) do
+    octopuses
+    |> octopuses_to_octrix()
+    |> print_octrix()
+    |> sim_flash_step([], steps)
+  end
+
+  defp octopuses_to_octrix(octos) do
+    y_max = octos |> length() |> Kernel.-(1)
+    x_max = octos |> List.first() |> length() |> Kernel.-(1)
+    tuples = for y <- 0..y_max, x <- 0..x_max, do: {"#{y}#{x}", get_field_value(octos, y, x)}
+    Map.new(tuples)
+  end
+
+  defp sim_flash_step(octrix, flashes, steps), do: sim_flash_step({octrix, flashes}, steps)
+  defp sim_flash_step({_octrix, flashes}, 0), do: flashes
+
+  defp sim_flash_step({octrix, flashes}, steps) do
+    {octrix, flashes} = octrix |> do_next_step(flashes)
+
+    {octrix, flashes}
+    |> sim_flash_step(steps - 1)
+  end
+
+  defp do_next_step(octrix, flashes) do
+    {new_octrix, new_flashes} = calculate_new_octrix_and_flashes(octrix)
+    {new_octrix, [new_flashes | flashes]}
+  end
+
+  defp calculate_new_octrix_and_flashes(octrix) do
+    octrix
+    |> Map.keys()
+    |> Enum.reduce(octrix, fn k, o -> Map.update!(o, k, &(&1 + 1)) end)
+    |> run_flashes()
+  end
+
+  defp print_octrix(octrix) do
+    IO.puts("---")
+
+    octrix
+    |> Enum.sort_by(fn {k, _v} -> k end)
+    |> Enum.group_by(fn {<<y::binary-size(1), _::binary>>, _} -> y end)
+    |> Enum.map(fn {_, v} -> Enum.map(v, fn {_, w} -> if w > 9, do: 0, else: w end) end)
+    |> Enum.map(fn v -> Enum.join(v, "") end)
+    |> Enum.each(&IO.puts/1)
+
+    octrix
+  end
+
+  defp run_flashes(octrix, flash_list \\ []) do
+    new_flashes =
+      octrix
+      |> Enum.reject(fn {coords, val} -> val < 10 or coords in flash_list end)
+      |> Enum.map(fn {coords, _} -> coords end)
+
+    case new_flashes do
+      [] -> {set_flashed_to_zero(octrix, flash_list), flash_list}
+      _ -> run_flashes(perform_flashes(octrix, new_flashes), flash_list ++ new_flashes)
+    end
+  end
+
+  defp set_flashed_to_zero(octrix, []), do: octrix
+  defp set_flashed_to_zero(octrix, [f | l]), do: set_flashed_to_zero(set_to_zero(octrix, f), l)
+
+  defp set_to_zero(octrix, flash), do: Map.put(octrix, flash, 0)
+
+  defp perform_flashes(octrix, []), do: octrix
+
+  defp perform_flashes(octrix, [<<y::binary-size(1), x::binary-size(1)>> | flashes]) do
+    y = String.to_integer(y)
+    x = String.to_integer(x)
+    keys = for yn <- (y - 1)..(y + 1), xn <- (x - 1)..(x + 1), do: "#{yn}#{xn}"
+    keys = keys |> Enum.filter(fn k -> k != "#{y}#{x}" and k in Map.keys(octrix) end)
+
+    keys
+    |> Enum.reduce(octrix, fn k, o -> Map.update!(o, k, fn val -> val + 1 end) end)
+    |> Map.put("#{y}#{x}", 0)
+    |> perform_flashes(flashes)
+  end
+
   def fix_incomplete_input_in_my_navigation() do
     "data/2021-day10.txt"
     |> file_to_line_list()
