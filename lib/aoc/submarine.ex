@@ -1,4 +1,157 @@
 defmodule AOC.Submarine do
+  def mix_polymers(times) do
+    "data/2021-day14.txt"
+    |> file_to_line_list()
+    |> get_starting_polymer_and_rules()
+    |> mix_polymer(times)
+    |> count_letters()
+  end
+
+  defp count_letters(polymer) do
+    polymer
+    |> Map.keys()
+    |> Enum.map(fn k -> k |> String.graphemes() |> Enum.map(&{&1, polymer[k]}) end)
+    |> List.flatten()
+    |> Enum.group_by(fn {l, _v} -> l end, fn {_l, v} -> v end)
+    |> Enum.map(fn {_letter, list} -> list |> Enum.sum() |> Kernel./(2) |> round() end)
+    |> Enum.sort()
+    |> (&(List.last(&1) - List.first(&1))).()
+  end
+
+  defp mix_polymer({polymer, rules}, n), do: mix_polymer(polymer, rules, n)
+
+  defp mix_polymer(polymer, _rules, 0), do: polymer
+  defp mix_polymer(polymer, rules, n), do: mix_polymer(calc_polymer(polymer, rules), rules, n - 1)
+
+  defp calc_polymer(polymer, rules) do
+    polymer
+    |> Map.keys()
+    |> update_polymer(polymer, rules, %{})
+  end
+
+  defp update_polymer([], _polymer, _rules, new_polymer), do: new_polymer
+
+  defp update_polymer([key | keys], polymer, rules, new_polymer) do
+    rules
+    |> Map.get(key, key)
+    |> List.wrap()
+    |> Enum.map(fn new_key -> {new_key, polymer[key]} end)
+    |> Enum.reduce(new_polymer, fn {nk, no}, poly -> Map.update(poly, nk, no, &(&1 + no)) end)
+    |> (&update_polymer(keys, polymer, rules, &1)).()
+  end
+
+  defp get_starting_polymer_and_rules([starting_polymer | rules]) do
+    rules
+    |> Enum.map(&map_rule/1)
+    |> Map.new()
+    |> (&{get_polymer_map(%{}, starting_polymer), &1}).()
+  end
+
+  defp get_polymer_map(map, <<_::binary-size(1)>>), do: map
+
+  defp get_polymer_map(map, <<set::binary-size(2), _::binary>> = polymer) do
+    map
+    |> Map.update(set, 1, fn x -> x + 1 end)
+    |> get_polymer_map(get_next_polymer_step(polymer))
+  end
+
+  defp get_next_polymer_step(<<_::binary-size(1), rest::binary>>), do: rest
+
+  defp map_rule(<<from1::binary-size(1), from2::binary-size(1), " -> ", to::binary-size(1)>>) do
+    {"#{from1}#{from2}", ["#{from1}#{to}", "#{to}#{from2}"]}
+  end
+
+  def fold_paper() do
+    "data/2021-day13.txt"
+    |> file_to_line_list()
+    |> get_dots_and_instructions()
+    |> fold_paper()
+    |> pretty_print_folded_paper()
+    |> length()
+  end
+
+  defp pretty_print_folded_paper(dots) do
+    " "
+    |> List.duplicate(dots |> Enum.max_by(fn {x, _} -> x end) |> elem(0) |> Kernel.+(1))
+    |> List.duplicate(dots |> Enum.max_by(fn {_, y} -> y end) |> elem(1) |> Kernel.+(1))
+    |> add_dots(dots)
+    |> Enum.map(fn list -> Enum.join(list, "") end)
+    |> Enum.each(fn line -> IO.puts(line) end)
+
+    dots
+  end
+
+  defp add_dots(canvas, []), do: canvas
+  defp add_dots(canvas, [dot | dots]), do: canvas |> add_dot(dot) |> add_dots(dots)
+
+  defp add_dot(canvas, {x, y}) do
+    List.update_at(canvas, y, fn line -> List.replace_at(line, x, "#") end)
+  end
+
+  def fold_paper_once() do
+    "data/2021-day13.txt"
+    |> file_to_line_list()
+    |> get_dots_and_instructions()
+    |> (fn {dots, [first_fold | _folds]} -> {dots, [first_fold]} end).()
+    |> fold_paper()
+    |> length()
+  end
+
+  defp fold_paper({dots, folds}) do
+    run_folds(dots, folds)
+  end
+
+  defp run_folds(dots, []), do: dots
+  defp run_folds(dots, [fold | folds]), do: run_folds(run_fold(dots, fold), folds)
+
+  defp run_fold(dots, {axis, position}) do
+    dots
+    |> pretty_print_folded_paper()
+    |> Enum.map(&map_dot_to_new_dot(&1, axis, position))
+    |> Enum.uniq()
+  end
+
+  defp map_dot_to_new_dot({x, y}, "x", position) do
+    case x - position do
+      diff when diff < 0 -> {x, y}
+      diff -> {x - 2 * diff, y}
+    end
+  end
+
+  defp map_dot_to_new_dot({x, y}, "y", position) do
+    case y - position do
+      diff when diff < 0 -> {x, y}
+      diff -> {x, y - 2 * diff}
+    end
+  end
+
+  defp get_dots_and_instructions(line_list) do
+    dots =
+      line_list
+      |> Enum.filter(&String.contains?(&1, ","))
+      |> Enum.map(&map_line_to_dot_tuple/1)
+
+    folds =
+      line_list
+      |> Enum.filter(&String.contains?(&1, "fold along"))
+      |> Enum.map(&map_line_to_fold_tuple/1)
+
+    {dots, folds}
+  end
+
+  defp map_line_to_dot_tuple(str) do
+    str |> String.split(",") |> Enum.map(&String.to_integer/1) |> List.to_tuple()
+  end
+
+  defp map_line_to_fold_tuple(str) do
+    [axis, position] =
+      str
+      |> String.trim_leading("fold along ")
+      |> String.split("=")
+
+    {axis, String.to_integer(position)}
+  end
+
   def find_distinct_cave_paths_for_multi_visit() do
     "data/2021-day12.txt"
     |> file_to_line_list()
