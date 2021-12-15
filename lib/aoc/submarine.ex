@@ -1,4 +1,102 @@
 defmodule AOC.Submarine do
+  def find_fastest_route() do
+    "data/2021-day15.txt"
+    |> file_to_line_list()
+    |> create_network()
+    |> find_shortest_path_from_top_left_to_right_down()
+  end
+
+  defp find_shortest_path_from_top_left_to_right_down(network) do
+    [{x, y, w, n, _} | rest] = network
+    {target_x, target_y, _, _, _} = List.last(network)
+    dijkstraize_network(rest, [{x, y, w, n, 0}], {target_x, target_y})
+  end
+
+  defp dijkstraize_network(unvisited_nodes, visited_nodes, target) do
+    visited_nodes
+    |> Enum.min_by(fn {_, _, _, _, t} -> t end)
+    |> visit_or_return(unvisited_nodes, visited_nodes, target)
+  end
+
+  defp visit_or_return({xc, yc, _, _, tw} = current, unvisited, visited, {xt, yt} = target) do
+    if xc == xt and yc == yt, do: tw, else: visit_node(current, unvisited, visited, target)
+  end
+
+  defp visit_node(current, unvisited, visited, target) do
+    {neighbors, unvisited, visited} = get_network_neighbors(current, unvisited, visited)
+
+    neighbors
+    |> Enum.map(&update_neighbor(&1, current))
+    |> Kernel.++(visited)
+    |> List.delete(current)
+    |> (&dijkstraize_network(unvisited, &1, target)).()
+  end
+
+  defp update_neighbor({x, y, nw, n, ntw} = _neighbor, {_, _, _, _, ctw} = _current) do
+    new_weight = ctw + nw
+    if new_weight < ntw, do: {x, y, nw, n, new_weight}, else: {x, y, nw, n, ntw}
+  end
+
+  defp get_network_neighbors({_, _, _, neighbors, _}, unvisited_nodes, visited_nodes) do
+    find_nodes(neighbors, unvisited_nodes, visited_nodes, [])
+  end
+
+  defp find_nodes([], unvisited, visited, result), do: {result, unvisited, visited}
+
+  defp find_nodes([{x, y} | next_nodes], unvisited, visited, result) do
+    case Enum.find(visited, fn {xn, yn, _, _, _} -> xn == x and yn == y end) do
+      nil -> find_nodes_in_unvisited({x, y}, next_nodes, unvisited, visited, result)
+      val -> find_nodes(next_nodes, unvisited, List.delete(visited, val), [val | result])
+    end
+  end
+
+  defp find_nodes_in_unvisited({x, y}, next_nodes, unvisited, visited, result) do
+    case Enum.find(unvisited, fn {xn, yn, _, _, _} -> xn == x and yn == y end) do
+      nil -> find_nodes(next_nodes, unvisited, visited, result)
+      val -> find_nodes(next_nodes, List.delete(unvisited, val), visited, [val | result])
+    end
+  end
+
+  defp create_network(lines) do
+    y_max = length(lines)
+
+    lines
+    |> Enum.with_index()
+    |> Enum.map(fn {line, y} -> create_nodes(line, y, y_max) end)
+    |> List.flatten()
+  end
+
+  defp create_nodes(line, y, y_max) do
+    x_max = String.length(line)
+
+    line
+    |> String.graphemes()
+    |> Enum.map(&String.to_integer/1)
+    |> Enum.with_index()
+    |> Enum.map(fn {weight, x} -> create_node(x, y, x_max, y_max, weight) end)
+  end
+
+  defp create_node(x, y, x_max, y_max, weight) do
+    for xn <- 0..4, yn <- 0..4 do
+      xv = x_max * xn + x
+      yv = y_max * yn + y
+
+      {xv, yv, get_own_weight(weight, xn, yn), generate_network_neighbors(xv, yv), :infinity}
+    end
+  end
+
+  defp get_own_weight(weight, xn, yn) do
+    case weight + xn + yn do
+      v when v < 10 -> v
+      v -> rem(v, 9)
+    end
+  end
+
+  defp generate_network_neighbors(x, y) do
+    [{x - 1, y}, {x + 1, y}, {x, y - 1}, {x, y + 1}]
+    |> Enum.reject(fn {x, y} -> x < 0 or y < 0 end)
+  end
+
   def mix_polymers(times) do
     "data/2021-day14.txt"
     |> file_to_line_list()
