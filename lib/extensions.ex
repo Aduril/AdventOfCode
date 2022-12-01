@@ -13,12 +13,15 @@ defmodule Extensions do
     |> String.starts_with?(prefix)
   end
 
-  def file_to_line_list(path) do
+  def file_to_line_list(path, reject_empty \\ true) do
     path
     |> File.read!()
     |> String.split("\n")
-    |> Enum.reject(&(&1 == ""))
+    |> (&reject_empty_elements(&1, reject_empty)).()
   end
+
+  defp reject_empty_elements(list, true), do: Enum.reject(list, &(&1 == ""))
+  defp reject_empty_elements(list, false), do: list
 
   defmacro __using__(_opts) do
     quote do
