@@ -1,6 +1,15 @@
 defmodule AOC.Submarine do
+  def decode_elvish() do
+    "data/2021-day16-test.txt"
+    |> file_to_line_list()
+    |> List.first()
+    |> IO.inspect(label: "THIS_IS_FOR_DEBUG_REASONS: string")
+    |> String.graphemes()
+    |> Enum.map_join("", fn g -> g |> String.to_integer(16) |> Integer.to_string(2) end)
+  end
+
   def find_fastest_route() do
-    "data/2021-day15.txt"
+    "data/2021-day15-test.txt"
     |> file_to_line_list()
     |> create_network()
     |> find_shortest_path_from_top_left_to_right_down()
