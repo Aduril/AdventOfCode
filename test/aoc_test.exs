@@ -6,8 +6,17 @@ defmodule AOCTest do
   for mod <- modules |> Enum.filter(&Extensions.module_has_prefix(&1, "Aoc2022")) do
     describe "#{mod}" do
       for {{fun, input, output}, index} <- mod.examples |> Enum.with_index() do
-        test "Example #{index}, #{inspect(fun)}, #{input} -> #{output}" do
-          assert unquote(fun).(unquote(input)) === unquote(output)
+        case output do
+          :noop ->
+            :noop
+
+          :research ->
+            Extensions.pretty_print_result(fun, input, index)
+
+          _ ->
+            test "Example #{index}, #{inspect(fun)}, #{input} -> #{output}" do
+              assert unquote(fun).(unquote(input)) === unquote(output)
+            end
         end
       end
     end

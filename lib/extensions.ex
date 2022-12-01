@@ -30,4 +30,10 @@ defmodule Extensions do
       def examples, do: @examples
     end
   end
+
+  def pretty_print_result(fun, input, index) do
+    result = fun.(input)
+    func_name = fun |> inspect() |> String.replace("&", "") |> String.replace("/1", "")
+    IO.puts(IO.ANSI.green() <> "##{index} #{func_name}(#{input}) = #{inspect(result)}")
+  end
 end
