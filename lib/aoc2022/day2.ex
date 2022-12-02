@@ -1,9 +1,9 @@
 defmodule Aoc2022.Day2 do
   @examples [
-    {&__MODULE__.first_task/1, "data/2022-day2-test.txt", 15},
-    {&__MODULE__.first_task/1, "data/2022-day2.txt", 9241},
-    {&__MODULE__.second_task/1, "data/2022-day2-test.txt", 12},
-    {&__MODULE__.second_task/1, "data/2022-day2.txt", 14610}
+    {:first_task, "data/2022-day2-test.txt", 15},
+    {:first_task, "data/2022-day2.txt", 9241},
+    {:second_task, "data/2022-day2-test.txt", 12},
+    {:second_task, "data/2022-day2.txt", 14610}
   ]
 
   use Extensions

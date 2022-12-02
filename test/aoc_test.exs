@@ -5,7 +5,9 @@ defmodule AOCTest do
 
   for mod <- modules |> Enum.filter(&Extensions.module_has_prefix(&1, "Aoc2022")) do
     describe "#{mod}" do
-      for {{fun, input, output}, index} <- mod.examples |> Enum.with_index() do
+      for {{fun_name, input, output}, index} <- mod.examples |> Enum.with_index() do
+        {fun, _} = Code.eval_string("&#{mod}.#{fun_name}/1")
+
         case output do
           :noop ->
             :noop
