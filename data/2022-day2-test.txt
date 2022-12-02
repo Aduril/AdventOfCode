@@ -1,0 +1,6 @@
+map(enumerable, fun)
+
+Returns a list where each element is the result of invoking
+fun on each corresponding element of enumerable.
+
+@spec map(t, (element -> any)) :: list
