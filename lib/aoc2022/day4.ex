@@ -3,7 +3,7 @@ defmodule Aoc2022.Day4 do
     {:first_task, "data/2022-day4-test.txt", 2},
     {:first_task, "data/2022-day4.txt", 490},
     {:second_task, "data/2022-day4-test.txt", 4},
-    {:second_task, "data/2022-day4.txt", :research}
+    {:second_task, "data/2022-day4.txt", 921}
   ]
 
   use Extensions
